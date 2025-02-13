@@ -1,0 +1,100 @@
+#!/bin/bash
+
+echo ".........----------------#################._.-.-INSTALL-.-._.#################----------------........."
+PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[\e[01;37m\]\$\[\033[0;37m\] '
+echo "PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[\e[01;37m\]\$\[\033[0;37m\] '" >> ~/.bashrc
+sed -i '1s/^/force_color_prompt=yes\n/' ~/.bashrc
+source ~/.bashrc
+
+# Update system
+dnf update -y
+dnf upgrade -y
+dnf install -y dnf-plugins-core
+
+# Install Docker
+dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+dnf install -y docker-ce docker-ce-cli containerd.io
+
+# Install basic tools
+dnf install -y vim gcc gcc-c++ make jq python3-pip
+
+# Install Kubernetes components
+KUBE_LATEST=$(curl -L -s https://dl.k8s.io/release/stable.txt | awk 'BEGIN { FS="." } { printf "%s.%s", $1, $2 }')
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/${KUBE_LATEST}/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/${KUBE_LATEST}/rpm/repodata/repomd.xml.key
+EOF
+
+dnf install -y kubelet kubeadm kubectl
+pip3 install jc
+
+### UUID of VM
+### comment below line if this Script is not executed on Cloud based VMs
+jc dmidecode | jq .[1].values.uuid -r
+
+systemctl enable kubelet
+
+echo ".........----------------#################._.-.-KUBERNETES-.-._.#################----------------........."
+rm -f /root/.kube/config
+kubeadm reset -f
+
+mkdir -p /etc/containerd
+containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' > /etc/containerd/config.toml
+systemctl restart containerd
+
+# uncomment below line if your host doesnt have minimum requirement of 2 CPU
+# kubeadm init --pod-network-cidr '10.244.0.0/16' --service-cidr '10.96.0.0/16' --ignore-preflight-errors=NumCPU --skip-token-print
+kubeadm init --pod-network-cidr '10.244.0.0/16' --service-cidr '10.96.0.0/16'  --skip-token-print
+
+mkdir -p ~/.kube
+cp -i /etc/kubernetes/admin.conf ~/.kube/config
+
+# Install Calico
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+kubectl rollout status daemonset calico-node -n kube-system --timeout=90s
+sleep 5
+
+echo "untaint controlplane node"
+node=$(kubectl get nodes -o=jsonpath='{.items[0].metadata.name}')
+for taint in $(kubectl get node $node -o jsonpath='{range .spec.taints[*]}{.key}{":"}{.effect}{"-"}{end}')
+do
+    kubectl taint node $node $taint
+done
+kubectl get nodes -o wide
+
+echo ".........----------------#################._.-.-Docker-.-._.#################----------------........."
+
+cat > /etc/docker/daemon.json <<EOF
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "storage-driver": "overlay2"
+}
+EOF
+mkdir -p /etc/systemd/system/docker.service.d
+
+systemctl daemon-reload
+systemctl restart docker
+systemctl enable docker
+
+echo ".........----------------#################._.-.-Java and MAVEN-.-._.#################----------------........."
+dnf install -y java-11-openjdk java-11-openjdk-devel maven
+java -version
+mvn -v
+
+echo ".........----------------#################._.-.-JENKINS-.-._.#################----------------........."
+dnf install -y wget
+wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+dnf install -y jenkins
+systemctl daemon-reload
+systemctl enable jenkins
+systemctl start jenkins
+usermod -a -G docker jenkins
+echo "jenkins ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+echo ".........----------------#################._.-.-COMPLETED-.-._.#################----------------........."
