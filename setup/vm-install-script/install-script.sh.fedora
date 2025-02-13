@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Reference - https://docs.fedoraproject.org/en-US/quick-docs/using-kubernetes-kubeadm/
+
 echo ".........----------------#################._.-.-INSTALL-.-._.#################----------------........."
 PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[\e[01;37m\]\$\[\033[0;37m\] '
 echo "PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[\e[01;37m\]\$\[\033[0;37m\] '" >> ~/.bashrc
@@ -11,10 +13,38 @@ dnf update -y
 dnf upgrade -y
 dnf install -y dnf-plugins-core
 
-# Disable firewalld and selinux
-systemctl disable firewalld
-systemctl stop firewalld
+# Disable firewalld and install iptables
+sudo systemctl disable --now firewalld
+sudo dnf install iptables iproute-tc
+
+# Create ip forwarding and bridge filters
+sudo cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+# Configure IPv4 forwarding and bridge filters
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+
+# Add required sysctl parameters and persist
+# sysctl params required by setup, params persist across reboots
+sudo cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+# Apply sysctl parameters without a reboot
+sudo sysctl --system
+
 sed -i 's/\(SELINUX=\)\(enforcing\|permissive\)/\1disabled/' /etc/selinux/config
+
+# Turn off swap
+sudo systemctl stop swap-create@zram0
+sudo dnf remove zram-generator-defaults
+
 
 
 # Install Docker
