@@ -11,6 +11,12 @@ dnf update -y
 dnf upgrade -y
 dnf install -y dnf-plugins-core
 
+# Disable firewalld and selinux
+systemctl disable firewalld
+systemctl stop firewalld
+sed -i 's/\(SELINUX=\)\(enforcing\|permissive\)/\1disabled/' /etc/selinux/config
+
+
 # Install Docker
 dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
 dnf install -y docker-ce docker-cli containerd
