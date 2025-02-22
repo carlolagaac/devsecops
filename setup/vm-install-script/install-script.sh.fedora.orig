@@ -43,15 +43,14 @@ sed -i 's/\(SELINUX=\)\(enforcing\|permissive\)/\1disabled/' /etc/selinux/config
 
 # Turn off swap
 sudo systemctl stop swap-create@zram0
-sudo dnf remove -y zram-generator-defaults
-sudo swapoff --all
+sudo dnf remove zram-generator-defaults
+sudo swapoff /dev/zram0
 
 
 # Install Docker
 #dnf5 
 #dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-#sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
-curl -fsSL https://download.docker.com/linux/fedora/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
+sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
 dnf install -y docker-ce docker-ce-cli containerd
 
 # Install basic tools
