@@ -1,1 +1,1 @@
-{"disk":[{"UUID":"1139fb51-3ca1-4c34-992d-fb1c02febca6","Name":"vagrant_primary","Path":"/vm/vagrant/12f4bd0f-ada9-4640-9a42-a3d2610b2631/disk-cl1.vmdk","primary":true}],"floppy":[],"dvd":[]}
+{"disk":[{"UUID":"296acf96-03cb-4b5b-99ea-dc24e2e6f1f6","Name":"vagrant_primary","Path":"/vm/vagrant/12f4bd0f-ada9-4640-9a42-a3d2610b2631/disk-cl1.vmdk","primary":true}],"floppy":[],"dvd":[]}
