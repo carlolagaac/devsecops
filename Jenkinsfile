@@ -14,13 +14,14 @@ pipeline {
             }
             post {
               always {
-                  publishHTML(
-                      target: [
-                          reportDir: 'target/site/jacoco',
-                          reportFiles: 'index.html',
-                          reportName: 'JaCoCo Coverage Report'
-                      ]
-                  )
+                 junit 'target/surefire-reports/*.xml'
+                 step([$class: 'CoveragePublisher', 
+                    sourceFileResolver: sourceFiles('STORE_LAST_BUILD'),
+                    targets: [
+                        [criteria: '80', metric: 'LINE'], 
+                        [criteria: '80', metric: 'BRANCH']
+                    ]
+                ])
               }
            }
         }  
