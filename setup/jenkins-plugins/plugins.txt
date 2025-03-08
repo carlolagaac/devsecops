@@ -1,5 +1,6 @@
 performance
 docker-workflow
+docker
 dependency-check-jenkins-plugin
 blueocean@1.27.7
 coverage
