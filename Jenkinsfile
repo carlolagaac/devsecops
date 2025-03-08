@@ -8,23 +8,23 @@ pipeline {
               archive 'target/*.jar' //modified again #9
             }
         }  
-        stage('Unit Test') {
-            steps {
-              sh "mvn test"
-            }
-            post {
-              always {
-                 junit 'target/surefire-reports/*.xml'
-                 step([$class: 'CoveragePublisher', 
-                    sourceFileResolver: sourceFiles('STORE_LAST_BUILD'),
-                    targets: [
-                        [criteria: '80', metric: 'LINE'], 
-                        [criteria: '80', metric: 'BRANCH']
-                    ]
-                ])
-              }
-           }
-        }  
+stage('Unit Test') {
+    steps {
+        sh "mvn test"
+    }
+    post {
+        always {
+            junit 'target/surefire-reports/*.xml'
+            jacoco(
+                execPattern: 'target/jacoco.exec',
+                classPattern: 'target/classes',
+                sourcePattern: 'src/main/java',
+                exclusionPattern: 'src/test*'
+            )
+        }
+    }
+}
+ 
         
         stage('Mutation Tests - PIT') {
             steps {
