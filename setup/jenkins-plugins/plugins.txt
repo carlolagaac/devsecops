@@ -2,7 +2,7 @@ performance
 docker-workflow
 dependency-check-jenkins-plugin
 blueocean@1.27.7
-jacoco@3.3.7
+coverage
 slack
 sonar@2.18
 pitmutation@1.0-18
